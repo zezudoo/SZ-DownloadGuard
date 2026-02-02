@@ -1,19 +1,19 @@
-// content-whatsapp.js
+// content-coopavel.js
 (() => {
-  // Mantém o SW informado que esta aba é do WhatsApp (evita bloquear blob:/data: de outros sites).
+  // Mantém o SW informado que esta aba está no host protegido (evita bloquear blob:/data: de outros sites).
   // Importante: roda só no top-frame (o content script está com all_frames=true).
   const isTopFrame = (() => {
     try { return window.top === window; } catch { return true; }
   })();
   if (isTopFrame) {
-    const pingWATab = () => {
-      try { chrome.runtime?.sendMessage?.({ type: 'wa-tab-ping', url: location.href }); } catch {}
+    const pingProtectedTab = () => {
+      try { chrome.runtime?.sendMessage?.({ type: 'sz-tab-ping', url: location.href }); } catch {}
     };
-    pingWATab();
-    const pingTimer = setInterval(pingWATab, 60_000);
+    pingProtectedTab();
+    const pingTimer = setInterval(pingProtectedTab, 60_000);
     window.addEventListener('pagehide', () => {
       clearInterval(pingTimer);
-      try { chrome.runtime?.sendMessage?.({ type: 'wa-tab-clear' }); } catch {}
+      try { chrome.runtime?.sendMessage?.({ type: 'sz-tab-clear' }); } catch {}
     });
   }
 
@@ -60,16 +60,16 @@
 
   // ======== Toast in-page ========
   function ensureToastInfra() {
-    if (document.getElementById('wa-dl-guard-toast-style')) return;
+    if (document.getElementById('sz-dl-guard-toast-style')) return;
     const st = document.createElement('style');
-    st.id = 'wa-dl-guard-toast-style';
+    st.id = 'sz-dl-guard-toast-style';
     st.textContent = `
-      #wa-dl-guard-toast-host { 
+      #sz-dl-guard-toast-host { 
         position: fixed; right: 20px; top: 20px; z-index: 2147483647;
         display: flex; flex-direction: column; gap: 12px; pointer-events: none;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       }
-      .wa-dl-guard-toast { 
+      .sz-dl-guard-toast { 
         background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
         color: #fff; 
         border-radius: 12px;
@@ -84,29 +84,29 @@
                     transform .3s cubic-bezier(0.4, 0, 0.2, 1);
         backdrop-filter: blur(10px);
       }
-      .wa-dl-guard-toast.show { 
+      .sz-dl-guard-toast.show { 
         opacity: 1; 
         transform: translateX(0) scale(1); 
       }
-      .wa-dl-guard-toast-header {
+      .sz-dl-guard-toast-header {
         display: flex;
         align-items: center;
         gap: 12px;
         margin-bottom: 8px;
       }
-      .wa-dl-guard-toast-icon {
+      .sz-dl-guard-toast-icon {
         font-size: 28px;
         line-height: 1;
         filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
       }
-      .wa-dl-guard-toast .title { 
+      .sz-dl-guard-toast .title { 
         font-weight: 700; 
         font-size: 15px;
         letter-spacing: -0.01em;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         flex: 1;
       }
-      .wa-dl-guard-toast .msg { 
+      .sz-dl-guard-toast .msg { 
         font-size: 13px;
         line-height: 1.5;
         opacity: 0.95;
@@ -116,22 +116,22 @@
     `;
     (document.head || document.documentElement).appendChild(st);
     const host = document.createElement('div');
-    host.id = 'wa-dl-guard-toast-host';
+    host.id = 'sz-dl-guard-toast-host';
     (document.documentElement || document.body || document.head).appendChild(host);
   }
 
   function showToast(title, msg) {
     try {
       ensureToastInfra();
-      const host = document.getElementById('wa-dl-guard-toast-host');
+      const host = document.getElementById('sz-dl-guard-toast-host');
       if (!host) return;
       const el = document.createElement('div');
-      el.className = 'wa-dl-guard-toast';
+      el.className = 'sz-dl-guard-toast';
       const header = document.createElement('div');
-      header.className = 'wa-dl-guard-toast-header';
+      header.className = 'sz-dl-guard-toast-header';
 
       const icon = document.createElement('div');
-      icon.className = 'wa-dl-guard-toast-icon';
+      icon.className = 'sz-dl-guard-toast-icon';
       icon.textContent = '🛡️';
 
       const titleEl = document.createElement('div');
@@ -156,11 +156,29 @@
   }
 
   // ======== Helpers ========
-  const isWhatsAppHost = (h) => /(^|\.)whatsapp\.(com|net)$/i.test(h) || /^wa\.me$/i.test(h);
-  const isWAishUrl = (url) => {
+  const PROTECTED_HOST_RE = /^coopavelcoop\.sz\.chat$/i;
+  const isProtectedHost = (h) => PROTECTED_HOST_RE.test(String(h || ''));
+  const isProtectedUrl = (url) => {
     if (!url) return false;
-    if (url.startsWith('blob:') || url.startsWith('data:')) return true;
-    try { return isWhatsAppHost(new URL(url, location.href).hostname); } catch { return false; }
+    try {
+      const parsed = new URL(url, location.href);
+      if (parsed.protocol === 'blob:' || parsed.protocol === 'data:') return true;
+      return parsed.protocol === 'https:' && isProtectedHost(parsed.hostname);
+    } catch {
+      return false;
+    }
+  };
+  const looksLikeDownloadEndpoint = (url) => {
+    try {
+      const parsed = new URL(url, location.href);
+      if (/(^|\/)(download|attachment|export)(\/|$)/i.test(parsed.pathname)) return true;
+      if (parsed.searchParams.has('download')) return true;
+      if (parsed.searchParams.has('attachment')) return true;
+      if (parsed.searchParams.has('dl')) return true;
+      return false;
+    } catch {
+      return false;
+    }
   };
 
   const extFromFilename = (name) => {
@@ -186,19 +204,19 @@
   const BLOCK = (why, details) => {
     // se estiver desativado, não faz nada
     if (!enabled) return;
-    showToast('WA - Download Guard', details || 'Download bloqueado pela política aplicada');
-    try { chrome.runtime?.sendMessage?.({ type: 'wa-blocked-notify', why, details }); } catch {}
+    showToast('SZ Download Guard Coopavel', details || 'Download bloqueado pela política aplicada');
+    try { chrome.runtime?.sendMessage?.({ type: 'sz-blocked-notify', why, details }); } catch {}
   };
 
   // ======== Interceptores ========
   function onAnchorClick(e, anchor) {
     if (!enabled) return; // toggle OFF → passa tudo
     const href = anchor.getAttribute('href') || anchor.href || '';
-    if (!isWAishUrl(href)) return;
+    if (!isProtectedUrl(href)) return;
     
     // Ignora se for navegação normal (sem download attribute e sem extensão de arquivo na URL)
     const dn = anchor.getAttribute('download') || anchor.download || '';
-    if (!dn && !extFromUrl(href)) return; // navegação normal, não é download
+    if (!dn && !extFromUrl(href) && !looksLikeDownloadEndpoint(href)) return; // navegação normal, não é download
     
     if (shouldBlockByExt(href, dn)) {
       e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
@@ -222,10 +240,10 @@
     value: function(...args) {
       if (!enabled) return _aClick.apply(this, args);
       const href = this.getAttribute('href') || this.href || '';
-      if (isWAishUrl(href)) {
+      if (isProtectedUrl(href)) {
         const dn = this.getAttribute('download') || this.download || '';
         // Ignora se for navegação normal (sem download attribute e sem extensão de arquivo)
-        if (!dn && !extFromUrl(href)) return _aClick.apply(this, args);
+        if (!dn && !extFromUrl(href) && !looksLikeDownloadEndpoint(href)) return _aClick.apply(this, args);
         
         if (shouldBlockByExt(href, dn)) {
           const ext = (dn && extFromFilename(dn)) || extFromUrl(href) || 'desconhecido';
@@ -244,8 +262,8 @@
     value: function(url, ...rest) {
       if (!enabled) return _open.call(window, url, ...rest);
       const s = String(url || '');
-      // Só bloqueia window.open se tiver extensão de arquivo (download real)
-      if (isWAishUrl(s) && extFromUrl(s) && shouldBlockByExt(s, '')) {
+      // Bloqueia quando a URL já parece um endpoint de download.
+      if (isProtectedUrl(s) && (extFromUrl(s) || looksLikeDownloadEndpoint(s)) && shouldBlockByExt(s, '')) {
         const ext = extFromUrl(s) || 'desconhecido';
         BLOCK('window-open', hasPolicy ? `Download bloqueado: extensão .${ext} bloqueada pela política aplicada` : 'Download bloqueado: nenhuma política carregada');
         return null;
@@ -261,11 +279,11 @@
     const a = document.activeElement;
     if (!(a instanceof HTMLAnchorElement)) return;
     const href = a.getAttribute('href') || a.href || '';
-    if (!isWAishUrl(href)) return;
+    if (!isProtectedUrl(href)) return;
     
     // Ignora se for navegação normal (sem download attribute e sem extensão de arquivo)
     const dn = a.getAttribute('download') || a.download || '';
-    if (!dn && !extFromUrl(href)) return;
+    if (!dn && !extFromUrl(href) && !looksLikeDownloadEndpoint(href)) return;
     
     if (shouldBlockByExt(href, dn)) {
       e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
@@ -274,5 +292,5 @@
     }
   }, true);
 
-  console.debug('[WA DL Guard] Content script ativo — toggle respected (enabled=', enabled, ').');
+  console.debug('[SZ Guard] Content script ativo — toggle respected (enabled=', enabled, ').');
 })();

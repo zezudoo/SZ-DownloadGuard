@@ -5,30 +5,42 @@ const STORAGE = {
   enabled: 'enabled',
   configUrl: 'configUrl',
   policy: 'policy',
-  policyFetchedAt: 'policyFetchedAt'
+  policyFetchedAt: 'policyFetchedAt',
+  policyLastError: 'policyLastError',
+  policySource: 'policySource',
+  policyValidationVersion: 'policyValidationVersion'
 };
 
 // Sem policy hardcoded. Apenas a URL padrão do seu Gist:
 const DEFAULT_CONFIG_URL =
-  'https://wazap.coopavel.com.br:8090/allowlist_wa_guard.json';
+  'https://gist.githubusercontent.com/zezudoo/d335a55f69fea0abb9b4c8c15ac3d738/raw/6fb3ff240732d6a3b071c00b3d43b90662282850/allowlist_sz_guard.json';
 
-const HOST_RE = /(^|\.)whatsapp\.(com|net)$/i;
-const WAME_RE = /^wa\.me$/i;
+const PROTECTED_HOST_RE = /^coopavelcoop\.sz\.chat$/i;
 
-const WA_TAB_TRACKING = {
-  keyPrefix: 'waTabLastSeen:',
+const SZ_TAB_TRACKING = {
+  keyPrefix: 'szTabLastSeen:',
   ttlMs: 2 * 60 * 1000 // 2 min: evita "grudar" e afetar outras páginas
 };
 
 const POLICY_REFRESH_SCHEDULE = {
-  alarmName: 'wa-dl-guard-refresh-policy',
+  alarmName: 'sz-download-guard-refresh-policy',
   periodMinutes: 60
 };
 
+const POLICY_VALIDATION_VERSION = 1;
+const POLICY_MIN_TTL_SECONDS = 300;
+const POLICY_MAX_TTL_SECONDS = 86400;
+
 // ===================== Utils =====================
-const getHost = (u) => { try { return new URL(u).hostname; } catch { return ''; } };
-const isWAHost = (h) => HOST_RE.test(h) || WAME_RE.test(h);
-const isWAUrl  = (u) => !!u && isWAHost(getHost(u));
+const isProtectedHost = (h) => PROTECTED_HOST_RE.test(String(h || ''));
+const isProtectedUrl = (u) => {
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === 'https:' && isProtectedHost(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
 const isBlobOrData = (u) => typeof u === 'string' && (u.startsWith('blob:') || u.startsWith('data:'));
 const lower = (s) => (typeof s === 'string' ? s.toLowerCase() : '');
 
@@ -48,6 +60,12 @@ const normalizeExtList = (list) => {
 const normalizeMimeList = (list) => {
   if (!Array.isArray(list)) return [];
   return list.map(normalizeMime).filter(Boolean);
+};
+const dedupe = (list) => Array.from(new Set(list));
+const isValidIsoDateTime = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed);
 };
 
 const GENERIC_MIME_TYPES = new Set([
@@ -73,7 +91,7 @@ const extFromUrl = (url) => { try { return extFromFilename(new URL(url).pathname
 const notifiedDownloads = new Map();
 const NOTIFY_COOLDOWN_MS = 3000; // 3 segundos de cooldown por download ID
 
-async function notify(message, title = 'WhatsApp Download Guard') {
+async function notify(message, title = 'SZ Download Guard Coopavel') {
   try {
     await chrome.notifications.create('', {
       type: 'basic',
@@ -85,7 +103,7 @@ async function notify(message, title = 'WhatsApp Download Guard') {
   } catch {}
 }
 
-async function notifyOnce(downloadId, message, title = 'WhatsApp Download Guard') {
+async function notifyOnce(downloadId, message, title = 'SZ Download Guard Coopavel') {
   const now = Date.now();
   const lastNotified = notifiedDownloads.get(downloadId);
   
@@ -110,33 +128,33 @@ async function cancelAndErase(id) {
   try { await chrome.downloads.erase({ id }); } catch {}
 }
 
-// ===================== Rastreamento de abas WhatsApp =====================
-const waTabKey = (tabId) => `${WA_TAB_TRACKING.keyPrefix}${tabId}`;
+// ===================== Rastreamento de abas protegidas =====================
+const szTabKey = (tabId) => `${SZ_TAB_TRACKING.keyPrefix}${tabId}`;
 
-async function markWATab(tabId) {
+async function markProtectedTab(tabId) {
   if (!Number.isInteger(tabId) || tabId < 0) return;
   try {
-    await chrome.storage.session.set({ [waTabKey(tabId)]: Date.now() });
+    await chrome.storage.session.set({ [szTabKey(tabId)]: Date.now() });
   } catch {}
 }
 
-async function clearWATab(tabId) {
+async function clearProtectedTab(tabId) {
   if (!Number.isInteger(tabId) || tabId < 0) return;
   try {
-    await chrome.storage.session.remove(waTabKey(tabId));
+    await chrome.storage.session.remove(szTabKey(tabId));
   } catch {}
 }
 
-async function isRecentWATab(tabId) {
+async function isRecentProtectedTab(tabId) {
   if (!Number.isInteger(tabId) || tabId < 0) return false;
   try {
-    const key = waTabKey(tabId);
+    const key = szTabKey(tabId);
     const data = await chrome.storage.session.get(key);
     const lastSeen = Number(data?.[key] || 0);
     if (!lastSeen) return false;
 
     const now = Date.now();
-    if (now - lastSeen > WA_TAB_TRACKING.ttlMs) {
+    if (now - lastSeen > SZ_TAB_TRACKING.ttlMs) {
       await chrome.storage.session.remove(key);
       return false;
     }
@@ -149,39 +167,94 @@ async function isRecentWATab(tabId) {
 // ===================== Policy remota =====================
 async function getConfigUrl() {
   const { [STORAGE.configUrl]: url } = await chrome.storage.local.get(STORAGE.configUrl);
-  return url || DEFAULT_CONFIG_URL;
+  const normalized = String(url || '').trim();
+  return normalized || DEFAULT_CONFIG_URL;
 }
 
 async function getCachedPolicy() {
-  const data = await chrome.storage.local.get([STORAGE.policy, STORAGE.policyFetchedAt]);
+  const data = await chrome.storage.local.get([
+    STORAGE.policy,
+    STORAGE.policyFetchedAt,
+    STORAGE.policyLastError,
+    STORAGE.policySource,
+    STORAGE.policyValidationVersion
+  ]);
   return {
     policy: data[STORAGE.policy] || null,
-    fetchedAt: data[STORAGE.policyFetchedAt] || 0
+    fetchedAt: data[STORAGE.policyFetchedAt] || 0,
+    lastError: data[STORAGE.policyLastError] || '',
+    source: data[STORAGE.policySource] || '',
+    validationVersion: data[STORAGE.policyValidationVersion] || 0
   };
 }
 
 function normalizePolicy(policy) {
-  if (!policy || typeof policy !== 'object') return null;
-  if (policy.mode !== 'allow') return null;
+  if (!policy || typeof policy !== 'object' || Array.isArray(policy)) {
+    throw new Error('policy must be a JSON object');
+  }
+  if (Number(policy.schema_version) !== 1) {
+    throw new Error('schema_version must be 1');
+  }
+  if (policy.mode !== 'allow') {
+    throw new Error('mode must be \"allow\"');
+  }
+  if (Object.prototype.hasOwnProperty.call(policy, 'default_action') &&
+      lower(policy.default_action) !== 'block') {
+    throw new Error('default_action must be \"block\" when provided');
+  }
+
+  const ttlSeconds = Number(policy.ttl_seconds);
+  if (!Number.isInteger(ttlSeconds) ||
+      ttlSeconds < POLICY_MIN_TTL_SECONDS ||
+      ttlSeconds > POLICY_MAX_TTL_SECONDS) {
+    throw new Error(`ttl_seconds must be an integer between ${POLICY_MIN_TTL_SECONDS} and ${POLICY_MAX_TTL_SECONDS}`);
+  }
+
   if (!policy.allowed ||
+      typeof policy.allowed !== 'object' ||
       !Array.isArray(policy.allowed.extensions) ||
       !Array.isArray(policy.allowed.mime_types)) {
-    return null;
+    throw new Error('allowed.extensions and allowed.mime_types must be arrays');
   }
+
+  if (Object.prototype.hasOwnProperty.call(policy, 'updated_at') &&
+      !isValidIsoDateTime(policy.updated_at)) {
+    throw new Error('updated_at must be a valid ISO datetime');
+  }
+
+  const extensions = dedupe(normalizeExtList(policy.allowed.extensions));
+  const mimeTypes = dedupe(normalizeMimeList(policy.allowed.mime_types));
+
   return {
     ...policy,
+    schema_version: 1,
+    mode: 'allow',
+    default_action: 'block',
+    ttl_seconds: ttlSeconds,
     allowed: {
       ...policy.allowed,
-      extensions: normalizeExtList(policy.allowed.extensions),
-      mime_types: normalizeMimeList(policy.allowed.mime_types)
+      extensions,
+      mime_types: mimeTypes
     }
   };
 }
 
-async function savePolicy(policy) {
+async function savePolicy(policy, sourceUrl) {
   await chrome.storage.local.set({
     [STORAGE.policy]: policy,
-    [STORAGE.policyFetchedAt]: Math.floor(Date.now() / 1000)
+    [STORAGE.policyFetchedAt]: Math.floor(Date.now() / 1000),
+    [STORAGE.policyLastError]: '',
+    [STORAGE.policySource]: sourceUrl,
+    [STORAGE.policyValidationVersion]: POLICY_VALIDATION_VERSION
+  });
+}
+
+async function savePolicyFetchError(sourceUrl, error) {
+  const message = String(error?.message || error || 'unknown error');
+  await chrome.storage.local.set({
+    [STORAGE.policyLastError]: message,
+    [STORAGE.policySource]: sourceUrl,
+    [STORAGE.policyValidationVersion]: POLICY_VALIDATION_VERSION
   });
 }
 
@@ -193,26 +266,31 @@ async function refreshPolicy(nonBlocking = true) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       const normalized = normalizePolicy(json);
-      if (!normalized) throw new Error('Policy inválida');
-      await savePolicy(normalized);
+      await savePolicy(normalized, url);
     } catch (e) {
-      console.debug('[WA DL Guard] refreshPolicy falhou:', e?.message || e);
+      await savePolicyFetchError(url, e);
+      console.debug('[SZ Guard] refreshPolicy falhou:', e?.message || e);
     }
   };
-  if (nonBlocking) doFetch(); else await doFetch();
+  if (nonBlocking) {
+    void doFetch();
+  } else {
+    await doFetch();
+  }
 }
 
 async function getPolicyForDecision() {
   const { policy, fetchedAt } = await getCachedPolicy();
-  if (policy && Number.isFinite(policy.ttl_seconds)) {
+  if (policy) {
     const now = Math.floor(Date.now() / 1000);
-    if (now - (fetchedAt || 0) >= Number(policy.ttl_seconds)) {
-      refreshPolicy(true); // atualiza em background
+    const ttlSeconds = Number(policy.ttl_seconds);
+    if (Number.isFinite(ttlSeconds) && now - (fetchedAt || 0) >= ttlSeconds) {
+      void refreshPolicy(true); // atualiza em background
     }
     return policy;
   }
   // sem policy no cache → tenta atualizar em background e retorna null
-  refreshPolicy(true);
+  void refreshPolicy(true);
   return null;
 }
 
@@ -222,20 +300,20 @@ async function isEnabled() {
   return enabled !== false; // default true
 }
 
-// ===================== Origem WhatsApp =====================
-async function isFromWhatsApp(item) {
+// ===================== Origem protegida =====================
+async function isFromProtectedDomain(item) {
   if (item?.byExtensionId === chrome.runtime.id) return false;
 
   const url = item?.finalUrl || item?.url || '';
   const ref = item?.referrer || '';
-  if (isWAUrl(url)) return true;
-  if (isWAUrl(ref)) return true;
+  if (isProtectedUrl(url)) return true;
+  if (isProtectedUrl(ref)) return true;
 
-  // blob/data: muitos sites usam isso; só trate como WhatsApp se houver referrer WA
-  // ou se o download veio de uma aba que foi vista recentemente no WhatsApp.
+  // blob/data: muitos sites usam isso; só trate como protegido se houver referrer compatível
+  // ou se o download veio de uma aba que foi vista recentemente no host alvo.
   if (isBlobOrData(url)) {
-    if (ref) return isWAUrl(ref);
-    return await isRecentWATab(item?.tabId);
+    if (ref) return isProtectedUrl(ref);
+    return await isRecentProtectedTab(item?.tabId);
   }
   return false;
 }
@@ -299,7 +377,7 @@ async function handleDownload(item, source) {
   let handled = false;
   try {
     if (!(await isEnabled())) return false;
-    if (!(await isFromWhatsApp(item))) return false;
+    if (!(await isFromProtectedDomain(item))) return false;
 
     handledDownloads.set(item.id, { source, at: Date.now() });
     handled = true;
@@ -317,7 +395,7 @@ async function handleDownload(item, source) {
     }
     return true;
   } catch (e) {
-    console.debug('[WA DL Guard] erro handleDownload:', e?.message || e);
+    console.debug('[SZ Guard] erro handleDownload:', e?.message || e);
     return false;
   } finally {
     inFlightDownloads.delete(item.id);
@@ -353,16 +431,16 @@ chrome.downloads.onCreated.addListener((item) => {
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg || !msg.type) return;
 
-  if (msg.type === 'wa-tab-ping') {
+  if (msg.type === 'sz-tab-ping') {
     const tabId = _sender?.tab?.id;
     const url = msg?.url || _sender?.url || _sender?.tab?.url || '';
-    if (isWAUrl(url)) markWATab(tabId);
+    if (isProtectedUrl(url)) markProtectedTab(tabId);
     return;
   }
 
-  if (msg.type === 'wa-tab-clear') {
+  if (msg.type === 'sz-tab-clear') {
     const tabId = _sender?.tab?.id;
-    clearWATab(tabId);
+    clearProtectedTab(tabId);
     return;
   }
 
@@ -370,11 +448,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     (async () => {
       try {
         await refreshPolicy(false);
-        const { policy, fetchedAt } = await getCachedPolicy();
-        sendResponse({ ok: !!policy, fetchedAt, summary: policy ? {
-          ext: policy?.allowed?.extensions?.length || 0,
-          mime: policy?.allowed?.mime_types?.length || 0
-        } : null });
+        const cached = await getCachedPolicy();
+        const ttlSeconds = Number(cached.policy?.ttl_seconds);
+        const ageSeconds = cached.fetchedAt
+          ? Math.max(0, Math.floor(Date.now() / 1000 - cached.fetchedAt))
+          : null;
+        const stale = !!cached.policy &&
+          Number.isFinite(ttlSeconds) &&
+          ageSeconds !== null &&
+          ageSeconds >= ttlSeconds;
+        sendResponse({
+          ok: !!cached.policy,
+          fetchedAt: cached.fetchedAt,
+          stale,
+          lastError: cached.lastError,
+          source: cached.source,
+          validationVersion: cached.validationVersion,
+          summary: cached.policy ? {
+            ext: cached.policy?.allowed?.extensions?.length || 0,
+            mime: cached.policy?.allowed?.mime_types?.length || 0
+          } : null
+        });
       } catch (e) {
         sendResponse({ ok: false, error: String(e?.message || e) });
       }
@@ -382,7 +476,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
-  if (msg.type === 'wa-blocked-notify') {
+  if (msg.type === 'sz-blocked-notify') {
     notify(msg.details || 'Download bloqueado pela política aplicada');
   }
 });
@@ -418,4 +512,5 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 chrome.runtime.onStartup.addListener(() => {
   ensurePolicyRefreshAlarm();
+  void refreshPolicy(true);
 });

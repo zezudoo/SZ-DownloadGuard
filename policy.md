@@ -1,6 +1,6 @@
-# Guia de Policy (Allowlist) — WA - Download Guard 🛡️
+# Guia de Policy (Allowlist) — SZ Download Guard Coopavel 🛡️
 
-Este documento explica **como criar e manter** a *policy* (allowlist) em **JSON** usada pela extensão para **permitir apenas tipos de arquivos seguros** vindos do WhatsApp.
+Este documento explica **como criar e manter** a *policy* (allowlist) em **JSON** usada pela extensão para **permitir apenas tipos de arquivos seguros** vindos do Coopavel SZ Chat.
 A policy é hospedada em um **Gist RAW** (ou qualquer host com CORS) e carregada pela extensão com **cache** (TTL).
 
 ---
@@ -11,7 +11,7 @@ A policy é hospedada em um **Gist RAW** (ou qualquer host com CORS) e carregada
 * **Semântica:** *allowlist* — **só o que você listar é permitido**; todo o resto é **bloqueado**.
 * **Onde hospedar:** Gist RAW (ex.: `https://gist.githubusercontent.com/.../raw/.../allowlist.json`).
 * **Cache:** respeita `ttl_seconds`. Ao expirar, a extensão busca a versão nova.
-* **Sem policy válida:** a extensão opera em **modo seguro por padrão** ⇒ **bloqueia tudo** do WhatsApp.
+* **Sem policy válida:** a extensão opera em **modo seguro por padrão** ⇒ **bloqueia tudo** do Coopavel SZ Chat.
 
 ---
 
@@ -34,11 +34,11 @@ A policy é hospedada em um **Gist RAW** (ou qualquer host com CORS) e carregada
 
 ### Campo a campo
 
-* `schema_version` (number): sempre `1` (versão atual do formato).
-* `updated_at` (string ISO8601): informativo (auditoria/registro humano).
+* `schema_version` (number): **deve ser `1`**.
+* `updated_at` (string ISO8601): opcional, mas quando presente precisa ser uma data ISO válida.
 * `mode` (string): **deve ser `"allow"`**.
-* `default_action` (string): **mantenha `"block"`**.
-* `ttl_seconds` (number): tempo de cache (ex.: `3600` = 1 hora).
+* `default_action` (string): quando presente, **deve ser `"block"`**.
+* `ttl_seconds` (number): inteiro entre **`300` e `86400`** segundos (ex.: `3600` = 1 hora).
 * `allowed.extensions` (string[]):
 
   * **minúsculas, sem ponto** (ex.: `"pdf"`, não `".pdf"`).
@@ -49,11 +49,24 @@ A policy é hospedada em um **Gist RAW** (ou qualquer host com CORS) e carregada
   * Adicione todas as variações realistas do seu ambiente (ex.: CSV às vezes vem como `application/vnd.ms-excel`).
 * `notes` (string): livre (informativo).
 
+### Validação aplicada pela extensão
+
+Na hora do fetch, a extensão só aceita a policy se:
+
+* `schema_version === 1`
+* `mode === "allow"`
+* `default_action === "block"` (quando o campo existe)
+* `ttl_seconds` é inteiro e está entre `300` e `86400`
+* `allowed.extensions` e `allowed.mime_types` são arrays válidos
+* `updated_at` (opcional) passa em parse ISO
+
+As listas de extensão/MIME são normalizadas para minúsculo e deduplicadas antes de salvar no cache.
+
 ---
 
 ## 🧠 Como a extensão decide (regra de permissão)
 
-**Content Script (na página do WhatsApp):**
+**Content Script (na página do Coopavel SZ Chat):**
 
 * **Sem policy carregada:** bloqueia **tudo** na origem (toast na página).
 * **Com policy carregada:** bloqueia quando a **extensão** é detectada e não está na allowlist; se não houver extensão detectável, o SW decide.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="color-scheme" content="light dark" />
-  <title>WA - Download Guard 🛡️— Opções</title>
+  <title>SZ Download Guard Coopavel - Opcoes</title>
   <style>
     :root{
       color-scheme: light dark;
@@ -19,6 +19,8 @@
       --btn-bg:#f3f4f6;
       --btn-fg:var(--text);
       --btn-border:#d1d5db;
+      --btn-hover-bg:#e5e7eb;
+      --btn-hover-border:#c4c9d3;
       --accent:#16a34a;
       --accent-600:#15803d;
       --danger:#dc2626;
@@ -36,6 +38,8 @@
         --btn-bg:#1c212b;
         --btn-fg:#e5e7eb;
         --btn-border:#2b303b;
+        --btn-hover-bg:#252b37;
+        --btn-hover-border:#3c4453;
         --shadow:0 8px 24px rgba(0,0,0,.55);
       }
     }
@@ -72,8 +76,8 @@
     }
     input[type="text"]::placeholder{color:var(--muted)}
     input[type="text"]:focus{
-      border-color: color-mix(in oklab, var(--accent) 60%, transparent);
-      box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent);
+      border-color:#3b82f6;
+      box-shadow:0 0 0 3px rgba(59,130,246,.25);
     }
 
     .buttons{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
@@ -85,8 +89,14 @@
       transition:transform .02s ease, background .15s ease, border-color .15s ease, color .15s ease;
     }
     .btn:active{transform:translateY(1px)}
+    .btn:hover{background:var(--btn-hover-bg); border-color:var(--btn-hover-border)}
     .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
     .btn.primary:hover{background:var(--accent-600); border-color:var(--accent-600)}
+    .btn:focus-visible,
+    input[type="text"]:focus-visible{
+      outline:2px solid #7fb3ff;
+      outline-offset:2px;
+    }
 
     .status{min-height:1.2em; font-size:12px; margin-left:6px}
     .status.ok{color:var(--accent)}
@@ -94,27 +104,27 @@
 
     .help{color:var(--muted); font-size:12px; margin-top:6px}
     .meta{color:var(--muted); font-size:12px; margin-top:8px}
-    code.k{padding:0 6px; border-radius:5px; background: color-mix(in oklab, var(--border) 50%, transparent)}
+    code.k{padding:0 6px; border-radius:5px; background:#e9edf5}
     hr.sep{border:0; border-top:1px solid var(--border); margin:12px 0}
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>WA - Download Guard 🛡️</h1>
+    <h1>SZ Download Guard Coopavel</h1>
 
     <div class="row">
-        <label class="inline">
-          <input type="checkbox" id="enabled" checked disabled aria-disabled="true" />
-          <span>Ativar bloqueio de downloads do WhatsApp <small style="color:var(--muted)">— sempre ativo por política</small></span>
-        </label>
+      <label class="inline">
+        <input type="checkbox" id="enabled" checked disabled aria-disabled="true" />
+        <span>Ativar bloqueio de downloads no escopo protegido <small style="color:var(--muted)">- sempre ativo por politica</small></span>
+      </label>
     </div>
-    
+
     <div class="row">
       <label for="configUrl" class="inline" style="gap:6px; align-items:flex-start; flex-direction:column">
         <span>URL da allowlist (JSON)</span>
-        <input type="text" id="configUrl" placeholder="https://wazap.coopavel.com.br:8090/allowlist_wa_guard.json" />
+        <input type="text" id="configUrl" placeholder="https://gist.githubusercontent.com/zezudoo/d335a55f69fea0abb9b4c8c15ac3d738/raw/6fb3ff240732d6a3b071c00b3d43b90662282850/allowlist_sz_guard.json" />
       </label>
-      <div class="help">Cole aqui o link <em>RAW</em> do Gist com a policy.</div>
+      <div class="help">Cole aqui o link RAW do Gist com a policy.</div>
     </div>
 
     <div class="row buttons">
@@ -125,9 +135,9 @@
 
     <hr class="sep" />
 
-    <div id="info" class="meta">Carregando…</div>
+    <div id="info" class="meta">Carregando...</div>
     <div class="help">
-      Dica: mantenha apenas tipos comuns (ex.: <code class="k">pdf</code>, <code class="k">jpg</code>) e evite executáveis/arquivos compactados.
+      Dica: mantenha apenas tipos comuns (ex.: <code class="k">pdf</code>, <code class="k">jpg</code>) e evite executaveis/arquivos compactados.
     </div>
   </div>
 

@@ -1,75 +1,74 @@
-# Politica de Privacidade - SZ Download Guard Coopavel
+﻿# Política de Privacidade - SZ Download Guard Coopavel
 
-Ultima atualizacao: 03/02/2026
+Última atualização: 03/02/2026
 
-## 1) Sobre esta extensao
+## 1) Sobre esta extensão
 
-A extensao **SZ Download Guard Coopavel** aplica uma politica de allowlist para downloads iniciados no dominio `https://coopavelcoop.sz.chat/*`, com o objetivo de bloquear tipos de arquivo nao permitidos.
+A extensão **SZ Download Guard Coopavel** aplica uma política de allowlist para downloads iniciados no domínio `https://coopavelcoop.sz.chat/*`, com o objetivo de bloquear tipos de arquivo não permitidos.
 
-## 2) Quais dados sao tratados
+## 2) Quais dados são tratados
 
-Para funcionar, a extensao pode tratar localmente:
+Para funcionar, a extensão pode tratar localmente:
 
 - URLs de download, nome de arquivo e MIME associados ao download.
-- Interacoes tecnicas de navegacao no dominio protegido (por exemplo, clique em links que disparam download).
-- Configuracoes e cache tecnico da policy de seguranca (armazenamento local da extensao).
+- Interações técnicas de navegação no domínio protegido (por exemplo, clique em links que disparam download).
+- Configurações e cache técnico da policy de segurança (armazenamento local da extensão).
 
-A extensao **nao coleta** dados pessoais para perfilamento, marketing ou venda.
+A extensão **não coleta** dados pessoais para perfilamento, marketing ou venda.
 
-## 3) Como os dados sao usados
+## 3) Como os dados são usados
 
-Os dados sao usados somente para:
+Os dados são usados somente para:
 
 - determinar se um download deve ser permitido ou bloqueado;
 - atualizar e validar a policy remota de tipos permitidos;
-- mostrar notificacoes de bloqueio;
-- manter configuracoes tecnicas da extensao.
+- mostrar notificações de bloqueio;
+- manter configurações técnicas da extensão.
 
 ## 4) Compartilhamento e venda de dados
 
-- Nao vendemos dados de usuarios.
-- Nao transferimos dados de usuarios para terceiros fora dos casos tecnicos necessarios ao funcionamento da extensao.
-- Nao usamos dados para credito, emprestimo ou decisoes semelhantes.
+- Não vendemos dados de usuários.
+- Não transferimos dados de usuários para terceiros fora dos casos técnicos necessários ao funcionamento da extensão.
+- Não usamos dados para crédito, empréstimo ou decisões semelhantes.
 
-## 5) Permissoes da extensao e justificativa
+## 5) Permissões da extensão e justificativa
 
-- `downloads`: avaliar e bloquear downloads nao permitidos.
-- `notifications`: informar bloqueios e estado de seguranca.
-- `storage`: salvar configuracoes e cache da policy.
+- `downloads`: avaliar e bloquear downloads não permitidos.
+- `notifications`: informar bloqueios e estado de segurança.
+- `storage`: salvar configurações e cache da policy.
 - `alarms`: atualizar periodicamente a policy.
 - `host_permissions`:
-  - `https://coopavelcoop.sz.chat/*` para proteger downloads no dominio alvo;
+  - `https://coopavelcoop.sz.chat/*` para proteger downloads no domínio alvo;
   - `https://gist.githubusercontent.com/*` para buscar o JSON da policy remota.
 
-## 6) Codigo remoto
+## 6) Código remoto
 
-A extensao nao executa codigo remoto.  
-Ela apenas baixa um arquivo JSON de configuracao (policy), tratado como dado.
+A extensão não executa código remoto.  
+Ela apenas baixa um arquivo JSON de configuração (policy), tratado como dado.
 
-## 7) Retencao e armazenamento
+## 7) Retenção e armazenamento
 
-Os dados tecnicos da extensao ficam no armazenamento local do navegador (`chrome.storage`).  
-Voce pode remover esses dados a qualquer momento limpando os dados da extensao ou desinstalando-a.
+Os dados técnicos da extensão ficam no armazenamento local do navegador (`chrome.storage`).  
+Você pode remover esses dados a qualquer momento limpando os dados da extensão ou desinstalando-a.
 
-## 8) Seguranca
+## 8) Segurança
 
-Adotamos abordagem de minimo privilegio e validacao estrita da policy remota (schema, modo, TTL e listas permitidas) antes de aplicar regras.
+Adotamos abordagem de mínimo privilégio e validação estrita da policy remota (schema, modo, TTL e listas permitidas) antes de aplicar regras.
 
 ## 9) Seus controles
 
-Voce pode:
+Você pode:
 
-- alterar a URL da policy nas opcoes da extensao;
-- forcar atualizacao manual da policy;
-- remover/desinstalar a extensao a qualquer momento.
+- alterar a URL da policy nas opções da extensão;
+- forçar atualização manual da policy;
+- remover/desinstalar a extensão a qualquer momento.
 
-## 10) Alteracoes desta politica
+## 10) Alterações desta política
 
-Esta politica pode ser atualizada para refletir mudancas tecnicas, legais ou operacionais.  
-A data no topo indica a versao mais recente.
+Esta política pode ser atualizada para refletir mudanças técnicas, legais ou operacionais.  
+A data no topo indica a versão mais recente.
 
 ## 11) Contato
 
-Responsavel pelo item: **Jose / Equipe SZ Download Guard Coopavel**  
-Contato: **[preencher e-mail oficial antes da publicacao]**
-
+Responsável pelo item: **José / Equipe SZ Download Guard Coopavel**  
+Contato: **[preencher e-mail oficial antes da publicação]**

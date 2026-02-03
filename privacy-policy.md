@@ -70,5 +70,5 @@ A data no topo indica a versão mais recente.
 
 ## 11) Contato
 
-Responsável pelo item: **José / Equipe SZ Download Guard Coopavel**  
-Contato: **[preencher e-mail oficial antes da publicação]**
+Responsável pelo item: **José Pedro Souza de Siqueira / Equipe SZ Download Guard Coopavel**  
+Contato: **jose@coopavel.com.br**

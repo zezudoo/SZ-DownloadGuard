@@ -2,6 +2,8 @@
 
 Last updated: 2026-02-03
 
+Versão em Português: [Política de Privacidade (Português)](https://github.com/zezudoo/SZ-DownloadGuard/blob/main/privacy-policy.md)
+
 ## 1) About this extension
 
 The **SZ Download Guard Coopavel** extension applies an allowlist policy to downloads initiated on `https://coopavelcoop.sz.chat/*`, with the goal of blocking non-authorized file types.
@@ -72,4 +74,3 @@ The date at the top indicates the latest version.
 
 Responsible party: **José Pedro Souza de Siqueira / SZ Download Guard Coopavel Team**  
 Contact: **jose@coopavel.com.br**
-

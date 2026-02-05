@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SZ Download Guard Coopavel",
+  "name": "SZ Chat - Download Guard Coopavel",
   "short_name": "SZ Guard",
-  "version": "1.0",
+  "version": "0.0.1",
   "description": "Policy-based download protection for Coopavel SZ Chat.",
   "minimum_chrome_version": "114",
   "icons": {
@@ -11,7 +11,7 @@
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
-  "action": { "default_title": "SZ Download Guard Coopavel" },
+  "action": { "default_title": "SZ Chat - Download Guard Coopavel" },
   "permissions": [
     "downloads",
     "notifications",

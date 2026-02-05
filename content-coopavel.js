@@ -204,7 +204,7 @@
   const BLOCK = (why, details) => {
     // se estiver desativado, não faz nada
     if (!enabled) return;
-    showToast('SZ Download Guard Coopavel', details || 'Download bloqueado pela política aplicada');
+    showToast('SZ Chat - Download Guard Coopavel', details || 'Download bloqueado pela política aplicada');
     try { chrome.runtime?.sendMessage?.({ type: 'sz-blocked-notify', why, details }); } catch {}
   };
 

@@ -91,7 +91,7 @@ const extFromUrl = (url) => { try { return extFromFilename(new URL(url).pathname
 const notifiedDownloads = new Map();
 const NOTIFY_COOLDOWN_MS = 3000; // 3 segundos de cooldown por download ID
 
-async function notify(message, title = 'SZ Download Guard Coopavel') {
+async function notify(message, title = 'SZ Chat - Download Guard Coopavel') {
   try {
     await chrome.notifications.create('', {
       type: 'basic',
@@ -103,7 +103,7 @@ async function notify(message, title = 'SZ Download Guard Coopavel') {
   } catch {}
 }
 
-async function notifyOnce(downloadId, message, title = 'SZ Download Guard Coopavel') {
+async function notifyOnce(downloadId, message, title = 'SZ Chat - Download Guard Coopavel') {
   const now = Date.now();
   const lastNotified = notifiedDownloads.get(downloadId);
   
